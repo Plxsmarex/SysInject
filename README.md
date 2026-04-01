@@ -12,7 +12,7 @@ There has been plenty of research into potential bypasses for these hooks, but a
 
 Here is an image of what the `callstack` of a **direct syscall** to `NtDelayExecution` looks like, as you can see, the module directly calls the kernel without passing through any **Windows libraries**:
 
-...
+<img width="295" height="203" alt="DirectSyscall_callstack" src="https://github.com/user-attachments/assets/1dbfbf13-0366-4696-bcdc-d345aa478c33" />
 
 **Indirect syscall:** Indirect syscalls are similar to **direct syscalls**, however instead of directly embedding the `syscall` in the program, it will `JMP` to an existing `syscall` instruction in a system library like `NTDLL`, this makes the `callstack` appear much more legitimate as it will show it passing through a **native API** before the **system call**. But this can be a problem, as calls to **native APIs** are also relatively unusual for legitimate programs, therefore, **EDRs** like **Elastic** will flag you if you do a call to a function like `NtProtectVirtualMemory` from your module.
 
@@ -22,7 +22,7 @@ Also, some **indirect syscall** attempts try to do a system call using a `syscal
 
 Here is an image of what the `callstack` of an **indirect syscall** to `NtDelayExecution` looks like, as you can see, the module goes through the `NtDelayExecution` stub in `NTDLL` before calling the kernel:
 
-...
+<img width="294" height="208" alt="IndirectSyscall_callstack" src="https://github.com/user-attachments/assets/c60a0efe-8be3-4b42-a443-665ddfb3e6bd" />
 
 # Enhancing callstack analysis with function hooking
 **Callstack analysis** already seems advanced enough, but when combined with **function hooking**, a theoretical new opportunity is created, something powerful enough to catch all forms of **indirect syscalls**, and also allow easy detection of **indirect API calling** (Dynamically resolved functions).
@@ -49,13 +49,13 @@ After that, we will **decrypt the shellcode**, which is located in the writable 
 
 This image shows the usermode `callstack` for the `NtProtectVirtualMemory` `syscall` in **SysInject**, as you can see, it goes from `SysInject.exe -> msvcrt.dll!resetstkoflw -> KernelBase.dll!VirtualProtect -> ntdll.dll!NtProtectVirtualMemory`:
 
-...
+<img width="929" height="520" alt="SysInject_protect_callstack" src="https://github.com/user-attachments/assets/96c5ea57-ed4f-479c-bed5-bdf8993b6a85" />
 
 After setting the protection of the shellcode to executable, we will test **SysInject** on `NtDelayExecution` to make all delays `5` seconds, after configuring the parameters, we will call `Sleep(0)` to test it, and after calling it, we can observe that it doesn't delay for `0` milliseconds like the function call would indicate, but `5` seconds instead!
 
 Here is an image of the callstack for this `syscall`, we can see it took the full path through all the expected modules, unlike the **direct and indirect syscall** `NtDelayExecution` calls. It will also have gone through any **EDR hooks**, but upon analysis, they would have only seen our dummy value `0`:
 
-...
+<img width="292" height="273" alt="SysInject_sleep_callstack" src="https://github.com/user-attachments/assets/1cc68b49-dae0-41f4-8640-5192c4560e85" />
 
 Once finished, we will clear all the targeted `syscalls` and remove the **exception handler**, and then **execute the shellcode**. The design of this shellcode loader also can be nice for creating **sleeping implants**; not only does it execute in **backed memory**, but since the payload is stored in the writable `.data` section, the loader could theoretically just set the protection back to read write (`RW`) and encrypt the payload using the logic used to decrypt it, this could leave it looking identical to the **executable image on the disk** during sleep times, which could be good for evading **memory scanners**.
 
