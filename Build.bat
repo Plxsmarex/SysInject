@@ -1,2 +1,2 @@
-@gcc -o SysInject.exe Main.c -e EntryPoint -Os -s -ffunction-sections -fno-ident -ffreestanding -nostartfiles
+@gcc -o SysInject.exe Main.c -e EntryPoint -Oz -s -ffunction-sections -Wl,--gc-sections -nostartfiles
 @pause
